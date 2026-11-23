@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 import {
@@ -88,11 +88,53 @@ export default function AutomationJobsPanel({
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const pollingRequestRef = useRef(false);
 
   const loadJobs = useCallback(async () => {
     const data = await getTicketAutomationJobs(ticketId);
     setJobs(data);
   }, [ticketId]);
+
+
+useEffect(() => {
+  const hasActiveJobs = jobs.some((job) =>
+    ["pending", "queued", "processing", "running"].includes(
+      job.status.toLowerCase()
+    )
+  );
+
+  if (!hasActiveJobs) {
+    return;
+  }
+
+  const intervalId = window.setInterval(async () => {
+    if (pollingRequestRef.current) {
+      return;
+    }
+
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
+    pollingRequestRef.current = true;
+
+            try {
+            const updatedJobs = await getTicketAutomationJobs(ticketId);
+
+            setJobs(updatedJobs);
+            setError("");
+            } catch (err) {
+            console.error("Automation polling failed:", err);
+            } finally {
+            pollingRequestRef.current = false;
+            }
+        }, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+        }, [ticketId, jobs]);
+
 
   useEffect(() => {
     let active = true;
@@ -163,9 +205,21 @@ export default function AutomationJobsPanel({
     <section className="rounded-xl bg-white p-6 shadow-sm">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            AI Automation Jobs
-          </h2>
+        <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">
+                AI Automation Jobs
+            </h2>
+
+            {jobs.some((job) =>
+                ["pending", "queued", "processing", "running"].includes(
+                job.status.toLowerCase()
+                )
+            ) && (
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                Auto-refresh every 5s
+                </span>
+            )}
+            </div>
 
           <p className="mt-1 text-sm text-slate-500">
             Monitor and retry automation jobs for Ticket #{ticketId}.
