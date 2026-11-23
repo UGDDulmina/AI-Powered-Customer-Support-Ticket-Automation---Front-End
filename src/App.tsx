@@ -9,6 +9,8 @@ import {
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import TicketDetailPage from "./components/tickets/TicketDetailPage";
+
 
 export default function App() {
   return (
@@ -26,6 +28,11 @@ export default function App() {
         <Route
           path="*"
           element={<Navigate to="/dashboard" replace />}
+        />
+
+        <Route
+          path="/tickets/:ticketId"
+          element={<TicketDetailPage />}
         />
       </Routes>
     </BrowserRouter>

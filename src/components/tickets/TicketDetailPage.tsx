@@ -19,7 +19,11 @@ import Conversation, {
   type ConversationMessage,
 } from "./Conversation";
 
+import AISuggestionCard from "../../components/ai/AISuggestionCard";
+
 import ReplyComposer from "./ReplyComposer";
+import { getCurrentAgent } from "../../api/auth.api";
+import AutomationJobsPanel from "../automation/AutomationJobsPanel";
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -116,6 +120,22 @@ export default function TicketDetailPage() {
 
   const [refreshing, setRefreshing] =
     useState(false);
+
+    
+ const [agentId, setAgentId] = useState<number | null>(null);
+
+ useEffect(() => {
+    async function loadAgent() {
+        try {
+        const agent = await getCurrentAgent();
+        setAgentId(agent.id);
+        } catch (err) {
+        setError(getErrorMessage(err));
+        }
+    }
+
+    void loadAgent();
+    }, []);
 
   const loadTicket = useCallback(async () => {
     if (!validId) {
@@ -288,11 +308,12 @@ export default function TicketDetailPage() {
     ticket.title ??
     "Untitled Ticket";
 
+
   return (
     <div className="min-h-screen bg-slate-100 p-6">
       <div className="mx-auto max-w-6xl space-y-6">
 
-        {/* Navigation */}
+
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
             to="/tickets"
@@ -310,7 +331,7 @@ export default function TicketDetailPage() {
           </button>
         </div>
 
-        {/* Alerts */}
+        
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
@@ -323,7 +344,6 @@ export default function TicketDetailPage() {
           </div>
         )}
 
-        {/* Ticket information */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -388,7 +408,6 @@ export default function TicketDetailPage() {
           )}
         </div>
 
-        {/* Ticket status */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">
             Update Ticket Status
@@ -446,7 +465,7 @@ export default function TicketDetailPage() {
           </p>
         </div>
 
-        {/* Conversation */}
+
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-5 text-lg font-semibold">
             Customer Conversation
@@ -463,7 +482,6 @@ export default function TicketDetailPage() {
           />
         </div>
 
-        {/* Manual reply */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <ReplyComposer
             onSend={handleManualReply}
@@ -476,7 +494,18 @@ export default function TicketDetailPage() {
             capability.
           </p>
         </div>
-
+            {agentId !== null && (
+            <AISuggestionCard
+                ticketId={id}
+                agentId={agentId}
+                onReplySent={async () => {
+                const updatedMessages = await getTicketMessages(id);
+                setMessages(updatedMessages);
+                setMessageError("");
+                }}
+            />
+            )}
+             <AutomationJobsPanel ticketId={id} />
       </div>
     </div>
   );
