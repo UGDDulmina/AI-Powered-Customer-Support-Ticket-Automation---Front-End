@@ -1,40 +1,27 @@
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
-import ProtectedRoute from "./components/layout/ProtectedRoute";
+import TicketsPage from "./pages/TicketsPage";
 import TicketDetailPage from "./components/tickets/TicketDetailPage";
-
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route
-            path="/dashboard"
-            element={<DashboardPage />}
-          />
-        </Route>
-
-        <Route
-          path="*"
-          element={<Navigate to="/dashboard" replace />}
-        />
-
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/tickets" element={<TicketsPage />} />
         <Route
           path="/tickets/:ticketId"
           element={<TicketDetailPage />}
         />
-      </Routes>
-    </BrowserRouter>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }
