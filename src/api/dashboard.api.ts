@@ -3,7 +3,7 @@ import { apiClient } from "./client";
 import type { Ticket } from "./tickets.api";
 
 export interface TicketListResponse {
-  item: Ticket[];
+  items: Ticket[];
   total: number;
   page: number;
   limit: number;
@@ -36,7 +36,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     const data = response.data;
 
-    allTickets.push(...data.item);
+    allTickets.push(...data.items);
 
     hasNext = data.has_next;
     page += 1;

@@ -7,7 +7,7 @@ import { apiClient } from "../../api/client";
 import type { Ticket } from "../../api/tickets.api";
 
 interface TicketListResponse {
-  item: Ticket[];
+  items: Ticket[];
   total: number;
   page: number;
   limit: number;
@@ -50,7 +50,7 @@ export default function TicketsPage() {
 
         if (signal?.aborted) return;
 
-        setTickets(response.data.item);
+        setTickets(response.data.items);
         setTotal(response.data.total);
         setTotalPages(
           Math.max(1, response.data.total_pages)

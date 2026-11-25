@@ -1,39 +1,64 @@
-
 import { apiClient } from "./client";
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+import type {
+  LoginRequest,
+  LoginResponse,
+  AuthenticatedAgent,
+} from "../types/auth.types";
 
-export interface LoginResponse {
-  access_token: string;
-  token_type: string;
-}
 
-export interface AgentProfile {
-  id: number;
-  name: string;
-  email: string;
-  role: "admin" | "agent";
-  is_active: boolean;
-}
+const TOKEN_KEY = "access_token";
 
-export async function loginAgent(
+
+export const saveAccessToken = (
+  token: string
+): void => {
+  sessionStorage.setItem(TOKEN_KEY, token);
+};
+
+
+export const getAccessToken = (): string | null => {
+  return sessionStorage.getItem(TOKEN_KEY);
+};
+
+
+export const removeAccessToken = (): void => {
+  sessionStorage.removeItem(TOKEN_KEY);
+};
+
+
+export const login = async (
   credentials: LoginRequest
-): Promise<LoginResponse> {
+): Promise<LoginResponse> => {
+
   const response = await apiClient.post<LoginResponse>(
     "/auth/login",
     credentials
   );
 
   return response.data;
-}
+};
 
-export async function getCurrentAgent(): Promise<AgentProfile> {
-  const response = await apiClient.get<AgentProfile>(
-    "/auth/me"
-  );
+export const loginAgent = login;
 
-  return response.data;
-}
+
+export const getCurrentAgent =
+  async (): Promise<AuthenticatedAgent> => {
+
+    const response =
+      await apiClient.get<AuthenticatedAgent>(
+        "/auth/me"
+      );
+
+    return response.data;
+  };
+
+
+export const logout = (): void => {
+  removeAccessToken();
+};
+
+
+export const isAuthenticated = (): boolean => {
+  return Boolean(getAccessToken());
+};

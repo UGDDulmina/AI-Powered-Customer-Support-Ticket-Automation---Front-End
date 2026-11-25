@@ -10,6 +10,8 @@ import {
   CartesianGrid,
 } from "recharts";
 
+import { useAuth } from "../hooks/useAuth";
+
 import {
   getDashboardStats,
   type DashboardStats,
@@ -103,6 +105,21 @@ export default function DashboardPage() {
     { status: "Closed", count: stats.closed },
     { status: "Pending", count: stats.pending },
   ];
+  const {
+  user,
+  loading: authLoading,
+  isAuthenticated,
+  isAdmin,
+  isAgent,
+} = useAuth();
+
+console.log("Authentication:", {
+  user,
+  authLoading,
+  isAuthenticated,
+  isAdmin,
+  isAgent,
+});
 
   return (
     <main className="min-h-screen bg-slate-100 p-6">
