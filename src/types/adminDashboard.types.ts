@@ -57,9 +57,50 @@ export interface AgentStats {
   login_ready: number;
 }
 
+
+export type DashboardTicketStatus =
+  | "open"
+  | "in_progress"
+  | "resolved"
+  | "closed";
+
+
+
+export type DashboardTicketPriority =
+  | "low"
+  | "medium"
+  | "high"
+  | "urgent";
+
+
+
+export interface RecentTicket {
+  id: number;
+  subject: string;
+  status: DashboardTicketStatus;
+  priority: DashboardTicketPriority;
+  category?: string | null;
+  assigned_agent_id?: number | null;
+  assigned_agent_name?: string | null;
+  created_at: string;
+}
+
+
+export interface RecentTicketListResponse {
+  item: RecentTicket[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+
 export interface AdminDashboardData {
   tickets: DashboardStatsResponse;
   agents: AgentStats;
   totalCustomers: number;
   agentWorkload: AgentWorkload[];
+  recentTickets: RecentTicket[];
 }

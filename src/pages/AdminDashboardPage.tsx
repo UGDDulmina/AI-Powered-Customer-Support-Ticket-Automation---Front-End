@@ -5,6 +5,9 @@ import {
   useRef,
 } from "react";
 
+import AdminDashboardTables from
+  "../components/admin/dashboard/adminDashboardTables";
+
 import {
   Ticket,
   Clock,
@@ -513,7 +516,8 @@ const AdminDashboardPage = () => {
       </section>
 
       <AdminDashboardCharts data={data} />
-
+      <AdminDashboardTables data={data} />
+      
       <section>
 
         <h2 className="mb-4 text-lg font-semibold

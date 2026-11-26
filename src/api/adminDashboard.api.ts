@@ -7,9 +7,12 @@ import type {
   AgentWorkload,
   AgentStats,
   AdminDashboardData,
+  RecentTicket,
+  RecentTicketListResponse,
 } from "../types/adminDashboard.types";
 
 
+ 
 
 export const getTicketDashboardStats = async (
   signal?: AbortSignal
@@ -140,6 +143,40 @@ export const getAgentWorkload = async (
 
  
 
+export const getRecentTickets = async (
+  signal?: AbortSignal
+): Promise<RecentTicket[]> => {
+
+  const response =
+    await apiClient.get<RecentTicketListResponse>(
+      "/tickets",
+      {
+        params: {
+          page: 1,
+          limit: 5,
+        },
+        signal,
+      }
+    );
+
+  const tickets = response.data.item;
+
+  if (!Array.isArray(tickets)) {
+    throw new Error(
+      "Invalid ticket list response."
+    );
+  }
+
+  return [...tickets].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime()
+  );
+};
+
+
+ 
+
 export const getAdminDashboardData = async (
   signal?: AbortSignal
 ): Promise<AdminDashboardData> => {
@@ -149,18 +186,55 @@ export const getAdminDashboardData = async (
     accounts,
     totalCustomers,
     workload,
+    recentTickets,
   ] = await Promise.all([
     getTicketDashboardStats(signal),
     getDashboardAgents(signal),
     getTotalCustomers(signal),
     getAgentWorkload(signal),
+    getRecentTickets(signal),
   ]);
+
+
+ 
+
+  const accountNames = new Map(
+    accounts.map((account) => [
+      account.id,
+      account.name,
+    ])
+  );
+
+
+ 
 
   const agentIds = new Set(
     accounts
-      .filter((account) => account.role === "agent")
+      .filter(
+        (account) => account.role === "agent"
+      )
       .map((account) => account.id)
   );
+
+
+ 
+
+  const enrichedTickets = recentTickets.map(
+    (ticket) => ({
+      ...ticket,
+
+      assigned_agent_name:
+        ticket.assigned_agent_name ??
+        (
+          ticket.assigned_agent_id != null
+            ? accountNames.get(
+                ticket.assigned_agent_id
+              ) ?? null
+            : null
+        ),
+    })
+  );
+
 
   return {
     tickets,
@@ -172,5 +246,7 @@ export const getAdminDashboardData = async (
     agentWorkload: workload.filter(
       (item) => agentIds.has(item.agent_id)
     ),
+
+    recentTickets: enrichedTickets,
   };
 };

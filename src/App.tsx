@@ -10,6 +10,9 @@ import DashboardPage from "./pages/DashboardPage";
 
 import TicketsPage from "./pages/TicketsPage";
 
+import AdminAgentsPage from
+  "./pages/AdminAgentPage";
+
 import TicketDetailPage from
   "./components/tickets/TicketDetailPage";
 
@@ -35,8 +38,6 @@ import AdminPlaceholderPage from
 
 import { useAuth } from "./hooks/useAuth";
 
-
-// Role-based dashboard redirection
 
 const DashboardRedirect = () => {
 
@@ -79,8 +80,6 @@ const DashboardRedirect = () => {
 };
 
 
-// Preserve existing ticket links
-
 const TicketRedirect = () => {
 
   const { user } = useAuth();
@@ -105,15 +104,12 @@ const App = () => {
 
     <Routes>
 
-      {/* Public routes */}
 
       <Route
         path="/login"
         element={<LoginPage />}
       />
 
-
-      {/* Protected routes */}
 
       <Route element={<ProtectedRoute />}>
 
@@ -137,8 +133,6 @@ const App = () => {
           element={<TicketDetailPage />}
         />
 
-
-        {/* Administrator routes */}
 
         <Route
           element={
@@ -166,15 +160,10 @@ const App = () => {
               element={<AdminDashboardPage />}
             />
 
-            <Route
-              path="agents"
-              element={
-                <AdminPlaceholderPage
-                  title="Agent Management"
-                  description="Register and manage support agents."
-                />
-              }
-            />
+             <Route
+                path="agents"
+                element={<AdminAgentsPage />}
+              />
 
             <Route
               path="customers"
@@ -221,8 +210,6 @@ const App = () => {
         </Route>
 
 
-        {/* Agent routes */}
-
         <Route
           element={
             <RoleRoute allowedRoles={["agent"]} />
@@ -248,8 +235,6 @@ const App = () => {
 
       </Route>
 
-
-      {/* Default routes */}
 
       <Route
         path="/"
