@@ -1,20 +1,51 @@
+import {
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
-export default function ProtectedRoute() {
+import LoadingSpinner from "../common/LoadingSpinner";
+
+
+const ProtectedRoute = () => {
+
+  const {
+    user,
+    loading,
+    isAuthenticated,
+  } = useAuth();
+
   const location = useLocation();
 
-  const token = sessionStorage.getItem("access_token");
 
-  if (!token) {
+  if (loading) {
+
+    return (
+      <LoadingSpinner
+        message="Verifying authentication..."
+      />
+    );
+
+  }
+
+
+  if (!isAuthenticated || !user?.is_active) {
+
     return (
       <Navigate
         to="/login"
-        replace
         state={{ from: location }}
+        replace
       />
     );
+
   }
 
+
   return <Outlet />;
-}
+};
+
+
+export default ProtectedRoute;
