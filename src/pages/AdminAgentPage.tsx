@@ -61,8 +61,6 @@ import {
 const PAGE_SIZE = 10;
 
 
-// Management modal types
-
 type AgentModal =
   | { type: "register" }
   | { type: "edit"; agent: Agent }
@@ -73,7 +71,6 @@ type AgentModal =
 
 const AdminAgentsPage = () => {
 
-  // Agent information
 
   const [agents, setAgents] =
     useState<Agent[]>([]);
@@ -81,8 +78,6 @@ const AdminAgentsPage = () => {
   const [workload, setWorkload] =
     useState<AgentWorkload[]>([]);
 
-
-  // Loading and error states
 
   const [loading, setLoading] =
     useState(true);
@@ -97,8 +92,6 @@ const AdminAgentsPage = () => {
     useState(false);
 
 
-  // Search and filtering
-
   const [search, setSearch] =
     useState("");
 
@@ -106,37 +99,25 @@ const AdminAgentsPage = () => {
     useState<AgentStatusFilter>("all");
 
 
-  // Pagination
-
   const [page, setPage] =
     useState(1);
 
-
-  // Modal state
 
   const [modal, setModal] =
     useState<AgentModal>(null);
 
 
-  // Success notification
-
   const [successMessage, setSuccessMessage] =
     useState("");
 
-
-  // Request cancellation
 
   const controllerRef =
     useRef<AbortController | null>(null);
 
 
-  // Last successful update
-
   const [lastUpdated, setLastUpdated] =
     useState<Date | null>(null);
 
-
-  // Retrieve agent data
 
   const loadAgents = useCallback(
     async (isRefresh = false) => {
@@ -213,9 +194,6 @@ const AdminAgentsPage = () => {
     []
   );
 
-
-  // Initial data loading
-
   useEffect(() => {
 
     void loadAgents();
@@ -228,8 +206,6 @@ const AdminAgentsPage = () => {
 
   }, [loadAgents]);
 
-
-  // Automatically dismiss success message
 
   useEffect(() => {
 
@@ -251,9 +227,6 @@ const AdminAgentsPage = () => {
 
   }, [successMessage]);
 
-
-  // Support agents only
-
   const supportAgents = useMemo(
     () => agents.filter(
       (agent) => agent.role === "agent"
@@ -261,18 +234,12 @@ const AdminAgentsPage = () => {
     [agents]
   );
 
-
-  // Calculate statistics
-
   const stats = useMemo(
     () => calculateAgentManagementStats(
       supportAgents
     ),
     [supportAgents]
   );
-
-
-  // Search and filtering
 
   const filteredAgents = useMemo(() => {
 
@@ -316,9 +283,6 @@ const AdminAgentsPage = () => {
 
   }, [supportAgents, search, status]);
 
-
-  // Pagination
-
   const totalPages = Math.max(
     1,
     Math.ceil(
@@ -343,9 +307,6 @@ const AdminAgentsPage = () => {
       endIndex
     );
 
-
-  // Search handler
-
   const handleSearchChange = (
     value: string
   ) => {
@@ -355,9 +316,6 @@ const AdminAgentsPage = () => {
     setPage(1);
 
   };
-
-
-  // Filter handler
 
   const handleStatusChange = (
     value: AgentStatusFilter
@@ -369,9 +327,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Clear filters
-
   const handleClearFilters = () => {
 
     setSearch("");
@@ -381,9 +336,6 @@ const AdminAgentsPage = () => {
     setPage(1);
 
   };
-
-
-  // Refresh data
 
   const handleRefresh = () => {
 
@@ -395,9 +347,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Open registration modal
-
   const handleOpenRegistration = () => {
 
     setSuccessMessage("");
@@ -407,9 +356,6 @@ const AdminAgentsPage = () => {
     });
 
   };
-
-
-  // Open edit modal
 
   const handleOpenEdit = (agent: Agent) => {
 
@@ -426,9 +372,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Open status modal
-
   const handleOpenStatus = (agent: Agent) => {
 
     if (agent.role !== "agent") {
@@ -443,9 +386,6 @@ const AdminAgentsPage = () => {
     });
 
   };
-
-
-  // Open password reset modal
 
   const handleOpenPasswordReset = (
     agent: Agent
@@ -464,17 +404,11 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Close current modal
-
   const handleCloseModal = useCallback(() => {
 
     setModal(null);
 
   }, []);
-
-
-  // Update local agent data
 
   const updateLocalAgent = (
     updatedAgent: Agent
@@ -502,9 +436,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Registration success
-
   const handleRegistrationSuccess = (
     agent: AgentRegistrationResponse
   ) => {
@@ -525,9 +456,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Edit success
-
   const handleEditSuccess = (
     updatedAgent: Agent
   ) => {
@@ -543,9 +471,6 @@ const AdminAgentsPage = () => {
     void loadAgents(true);
 
   };
-
-
-  // Status change success
 
   const handleStatusSuccess = (
     updatedAgent: Agent
@@ -566,9 +491,6 @@ const AdminAgentsPage = () => {
     void loadAgents(true);
 
   };
-
-
-  // Password reset success
 
   const handlePasswordResetSuccess = (
     updatedAgent: Agent
@@ -596,9 +518,6 @@ const AdminAgentsPage = () => {
 
   };
 
-
-  // Initial loading state
-
   if (loading && !hasLoaded) {
 
     return (
@@ -611,8 +530,7 @@ const AdminAgentsPage = () => {
 
   }
 
-
-  // Initial error state
+ 
 
   if (error && !hasLoaded) {
 
@@ -668,7 +586,6 @@ const AdminAgentsPage = () => {
 
     <div className="space-y-6">
 
-      {/* Page header */}
 
       <div className="flex flex-wrap
                       items-center
@@ -706,8 +623,6 @@ const AdminAgentsPage = () => {
 
         </div>
 
-
-        {/* Header buttons */}
 
         <div className="flex flex-wrap
                         items-center gap-3">
@@ -773,8 +688,6 @@ const AdminAgentsPage = () => {
       </div>
 
 
-      {/* Success notification */}
-
       {successMessage && (
 
         <div
@@ -821,8 +734,6 @@ const AdminAgentsPage = () => {
       )}
 
 
-      {/* Refresh error */}
-
       {error && hasLoaded && (
 
         <div
@@ -850,13 +761,8 @@ const AdminAgentsPage = () => {
 
       )}
 
-
-      {/* Agent statistics */}
-
       <AgentStatsCards stats={stats} />
 
-
-      {/* Password configuration warning */}
 
       {stats.passwordRequired > 0 && (
 
@@ -898,9 +804,6 @@ const AdminAgentsPage = () => {
 
       )}
 
-
-      {/* Agent management table */}
-
       <section className="overflow-hidden
                           rounded-xl border
                           border-slate-200
@@ -927,8 +830,6 @@ const AdminAgentsPage = () => {
         </div>
 
 
-        {/* Search and filters */}
-
         <AgentFilters
           search={search}
           status={status}
@@ -936,9 +837,6 @@ const AdminAgentsPage = () => {
           onStatusChange={handleStatusChange}
           onClear={handleClearFilters}
         />
-
-
-        {/* Agent records */}
 
         <AgentTable
           agents={paginatedAgents}
@@ -956,8 +854,6 @@ const AdminAgentsPage = () => {
           onResetPassword={handleOpenPasswordReset}
         />
 
-
-        {/* Pagination */}
 
         <div className="flex flex-wrap
                         items-center
@@ -1060,9 +956,6 @@ const AdminAgentsPage = () => {
 
       </section>
 
-
-      {/* Registration modal */}
-
       {modal?.type === "register" && (
 
         <AgentRegistrationModal
@@ -1071,9 +964,6 @@ const AdminAgentsPage = () => {
         />
 
       )}
-
-
-      {/* Edit modal */}
 
       {modal?.type === "edit" && (
 
@@ -1084,9 +974,6 @@ const AdminAgentsPage = () => {
         />
 
       )}
-
-
-      {/* Account status modal */}
 
       {modal?.type === "status" && (
 
@@ -1103,9 +990,6 @@ const AdminAgentsPage = () => {
         />
 
       )}
-
-
-      {/* Password reset modal */}
 
       {modal?.type === "password" && (
 

@@ -38,6 +38,11 @@ import AdminPlaceholderPage from
 
 import { useAuth } from "./hooks/useAuth";
 
+import AdminCustomersPage from "./pages/AdminCustomersPage";
+
+import AdminCustomerDetailsPage from "./pages/AdminCustomerDetailsPage";
+
+import AdminTicketsPage from "./pages/AdminTicketsPage";
 
 const DashboardRedirect = () => {
 
@@ -167,17 +172,17 @@ const App = () => {
 
             <Route
               path="customers"
-              element={
-                <AdminPlaceholderPage
-                  title="Customer Management"
-                  description="Manage customer records."
-                />
-              }
+              element={<AdminCustomersPage />}
             />
 
             <Route
-              path="tickets"
-              element={<TicketsPage />}
+              path="customers/:customerId"
+              element={<AdminCustomerDetailsPage />}
+            />
+
+            <Route 
+              path="tickets" 
+              element={<AdminTicketsPage />} 
             />
 
             <Route
