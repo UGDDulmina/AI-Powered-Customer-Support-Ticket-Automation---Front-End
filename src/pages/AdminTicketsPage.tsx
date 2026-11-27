@@ -3,12 +3,15 @@ import {
   useEffect,
 } from "react";
 
+import { Link } from "react-router-dom";
+
 import {
   RefreshCw,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
   LoaderCircle,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -70,7 +73,8 @@ const AdminTicketsPage = () => {
 
   const [page, setPage] = useState(1);
 
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] =
+    useState(0);
 
   const [ticketRetryKey, setTicketRetryKey] =
     useState(0);
@@ -184,11 +188,13 @@ const AdminTicketsPage = () => {
       }
 
       if (filters.customerId !== "all") {
-        query.customer_id = Number(filters.customerId);
+        query.customer_id =
+          Number(filters.customerId);
       }
 
       if (filters.agentId !== "all") {
-        query.assigned_agent_id = Number(filters.agentId);
+        query.assigned_agent_id =
+          Number(filters.agentId);
       }
 
       try {
@@ -215,7 +221,9 @@ const AdminTicketsPage = () => {
         setLastUpdated(new Date());
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
-          setTicketsError(getApiErrorMessage(error));
+          setTicketsError(
+            getApiErrorMessage(error)
+          );
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -224,7 +232,9 @@ const AdminTicketsPage = () => {
       }
     };
 
-    if (filters.search.trim() !== debouncedSearch) {
+    if (
+      filters.search.trim() !== debouncedSearch
+    ) {
       setTicketsLoading(true);
 
       return () => {
@@ -294,7 +304,8 @@ const AdminTicketsPage = () => {
   const startIndex =
     records.length === 0
       ? 0
-      : (currentPage - 1) * (tickets?.limit ?? PAGE_SIZE) + 1;
+      : (currentPage - 1) *
+          (tickets?.limit ?? PAGE_SIZE) + 1;
 
   const endIndex =
     records.length === 0
@@ -324,21 +335,36 @@ const AdminTicketsPage = () => {
 
         </div>
 
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
+        <div className="flex flex-wrap items-center gap-3">
 
-          <RefreshCw
-            size={17}
-            className={refreshing ? "animate-spin" : ""}
-          />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
 
-          {refreshing ? "Loading..." : "Refresh"}
+            <RefreshCw
+              size={17}
+              className={refreshing ? "animate-spin" : ""}
+            />
 
-        </button>
+            {refreshing ? "Loading..." : "Refresh"}
+
+          </button>
+
+          <Link
+            to="/admin/tickets/create"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+
+            <Plus size={18} />
+
+            Create Ticket
+
+          </Link>
+
+        </div>
 
       </div>
 

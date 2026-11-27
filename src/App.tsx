@@ -2,122 +2,103 @@ import {
   Routes,
   Route,
   Navigate,
+  useParams,
 } from "react-router-dom";
 
 import LoginPage from "./pages/LoginPage";
-
 import DashboardPage from "./pages/DashboardPage";
-
 import TicketsPage from "./pages/TicketsPage";
-
-import AdminAgentsPage from
-  "./pages/AdminAgentPage";
-
-import TicketDetailPage from
-  "./components/tickets/TicketDetailPage";
-
-import UnauthorizedPage from
-  "./pages/UnauthorizedPage";
-
-import ProtectedRoute from
-  "./components/auth/ProtectedRoute";
-
-import RoleRoute from
-  "./components/auth/RoleRoute";
-
-import LoadingSpinner from
-  "./components/common/LoadingSpinner";
-
+import AdminAgentsPage from "./pages/AdminAgentPage";
+import TicketDetailPage from "./components/tickets/TicketDetailPage";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RoleRoute from "./components/auth/RoleRoute";
+import LoadingSpinner from "./components/common/LoadingSpinner";
 import AdminLayout from "./components/layout/AdminLayout";
-
-import AdminDashboardPage from
-  "./pages/AdminDashboardPage";
-
-import AdminPlaceholderPage from
-  "./pages/AdminPlaceholderPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminPlaceholderPage from "./pages/AdminPlaceholderPage";
+import AdminCustomersPage from "./pages/AdminCustomersPage";
+import AdminCustomerDetailsPage from "./pages/AdminCustomerDetailsPage";
+import AdminTicketsPage from "./pages/AdminTicketsPage";
+import AdminCreateTicketPage from "./pages/AdminCreateTicketPage";
+import AdminTicketDetailPage from "./pages/AdminTicketDetailPage";
 
 import { useAuth } from "./hooks/useAuth";
 
-import AdminCustomersPage from "./pages/AdminCustomersPage";
-
-import AdminCustomerDetailsPage from "./pages/AdminCustomerDetailsPage";
-
-import AdminTicketsPage from "./pages/AdminTicketsPage";
-
 const DashboardRedirect = () => {
-
   const { user, loading } = useAuth();
 
   if (loading) {
-
     return (
-      <LoadingSpinner
-        message="Loading dashboard..."
-      />
+      <LoadingSpinner message="Loading dashboard..." />
     );
-
   }
 
   if (user?.role === "admin") {
-
-    return (
-      <Navigate
-        to="/admin/dashboard"
-        replace
-      />
-    );
-
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   if (user?.role === "agent") {
-
-    return (
-      <Navigate
-        to="/agent/dashboard"
-        replace
-      />
-    );
-
+    return <Navigate to="/agent/dashboard" replace />;
   }
 
   return <Navigate to="/login" replace />;
-
 };
-
 
 const TicketRedirect = () => {
-
   const { user } = useAuth();
 
-  return (
-    <Navigate
-      to={
-        user?.role === "admin"
-          ? "/admin/tickets"
-          : "/agent/tickets"
-      }
-      replace
-    />
-  );
+  if (user?.role === "admin") {
+    return <Navigate to="/admin/tickets" replace />;
+  }
 
+  if (user?.role === "agent") {
+    return <Navigate to="/agent/tickets" replace />;
+  }
+
+  return <Navigate to="/unauthorized" replace />;
 };
 
+const TicketDetailRedirect = () => {
+  const { user } = useAuth();
+  const { ticketId } = useParams();
+
+  const id = Number(ticketId);
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return <TicketRedirect />;
+  }
+
+  if (user?.role === "admin") {
+    return (
+      <Navigate
+        to={`/admin/tickets/${id}`}
+        replace
+      />
+    );
+  }
+
+  if (user?.role === "agent") {
+    return (
+      <Navigate
+        to={`/agent/tickets/${id}`}
+        replace
+      />
+    );
+  }
+
+  return <Navigate to="/unauthorized" replace />;
+};
 
 const App = () => {
-
   return (
-
     <Routes>
-
-
       <Route
         path="/login"
         element={<LoginPage />}
       />
 
-
       <Route element={<ProtectedRoute />}>
-
         <Route
           path="/unauthorized"
           element={<UnauthorizedPage />}
@@ -135,29 +116,19 @@ const App = () => {
 
         <Route
           path="/tickets/:ticketId"
-          element={<TicketDetailPage />}
+          element={<TicketDetailRedirect />}
         />
 
-
         <Route
-          element={
-            <RoleRoute allowedRoles={["admin"]} />
-          }
+          element={<RoleRoute allowedRoles={["admin"]} />}
         >
-
           <Route
             path="/admin"
             element={<AdminLayout />}
           >
-
             <Route
               index
-              element={
-                <Navigate
-                  to="dashboard"
-                  replace
-                />
-              }
+              element={<Navigate to="dashboard" replace />}
             />
 
             <Route
@@ -165,10 +136,10 @@ const App = () => {
               element={<AdminDashboardPage />}
             />
 
-             <Route
-                path="agents"
-                element={<AdminAgentsPage />}
-              />
+            <Route
+              path="agents"
+              element={<AdminAgentsPage />}
+            />
 
             <Route
               path="customers"
@@ -180,14 +151,19 @@ const App = () => {
               element={<AdminCustomerDetailsPage />}
             />
 
-            <Route 
-              path="tickets" 
-              element={<AdminTicketsPage />} 
+            <Route
+              path="tickets"
+              element={<AdminTicketsPage />}
+            />
+
+            <Route
+              path="tickets/create"
+              element={<AdminCreateTicketPage />}
             />
 
             <Route
               path="tickets/:ticketId"
-              element={<TicketDetailPage />}
+              element={<AdminTicketDetailPage />}
             />
 
             <Route
@@ -209,18 +185,12 @@ const App = () => {
                 />
               }
             />
-
           </Route>
-
         </Route>
 
-
         <Route
-          element={
-            <RoleRoute allowedRoles={["agent"]} />
-          }
+          element={<RoleRoute allowedRoles={["agent"]} />}
         >
-
           <Route
             path="/agent/dashboard"
             element={<DashboardPage />}
@@ -235,11 +205,8 @@ const App = () => {
             path="/agent/tickets/:ticketId"
             element={<TicketDetailPage />}
           />
-
         </Route>
-
       </Route>
-
 
       <Route
         path="/"
@@ -250,12 +217,8 @@ const App = () => {
         path="*"
         element={<DashboardRedirect />}
       />
-
     </Routes>
-
   );
-
 };
-
 
 export default App;

@@ -79,3 +79,41 @@ export interface AdminTicketLookups {
   customers: TicketLookupOption[];
   agents: TicketAgentOption[];
 }
+
+export interface AdminTicketCreateRequest {
+  subject: string;
+  description: string;
+  customer_id: number;
+  priority: TicketPriority;
+  category?: string | null;
+}
+
+export interface AdminTicketCreateForm {
+  customerId: string;
+  subject: string;
+  description: string;
+  priority: TicketPriority;
+  category: string;
+}
+
+export interface TicketPredictionRequest {
+  subject: string;
+  description: string;
+}
+
+export interface TicketCategoryPrediction {
+  category: string;
+}
+
+export interface TicketPriorityPrediction {
+  priority: TicketPriority;
+  matched_keywords: string[];
+  reason: string;
+}
+
+export interface TicketPredictionResult {
+  category: string;
+  priority: TicketPriority;
+  matchedKeywords: string[];
+  reason: string;
+}
