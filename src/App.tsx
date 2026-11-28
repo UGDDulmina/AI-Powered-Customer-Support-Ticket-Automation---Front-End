@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 
 import { LoaderCircle } from "lucide-react";
-
+import CustomerLayout from "./components/layout/CustomerLayout";
 import { useAuth } from "./hooks/useAuth";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -25,12 +25,22 @@ import AdminCustomerDetailsPage from "./pages/AdminCustomerDetailsPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminCreateTicketPage from "./pages/AdminCreateTicketPage";
 import AdminTicketDetailPage from "./pages/AdminTicketDetailPage";
-import AdminPlaceholderPage from "./pages/AdminPlaceholderPage";
 
 import AgentProfilePage from "./pages/AgentProfilePage";
 
 import AgentTicketsPage from "./pages/AgentTicketsPage";
 import AgentTicketDetailPage from "./pages/AgentTicketDetailPage";
+
+import AdminAIAnalyticsPage from "./pages/AdminAIAnalyticsPage";
+
+import AdminAutomationPage from "./pages/AdminAutomationPage";
+import CustomerRegisterPage from "./pages/CustomerRegisterPage";
+
+import CustomerLoginPage from "./pages/CustomerLoginPage";
+import CustomerDashboardPage from "./pages/CustomerDashboardPage";
+import CustomerProtectedRoute from "./components/auth/CustomerProtectedRoute";
+import CustomerPublicRoute from "./components/auth/CustomerPublicRoute";
+
 
 const RouteLoading = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -160,6 +170,99 @@ const App = () => {
         element={<LoginPage />}
       />
 
+     <Route element={<CustomerPublicRoute />}>
+          <Route
+            path="/customer/register"
+            element={<CustomerRegisterPage />}
+          />
+
+          <Route
+            path="/customer/login"
+            element={<CustomerLoginPage />}
+          />
+        </Route>
+
+        <Route element={<CustomerProtectedRoute />}>
+          <Route
+            path="/customer"
+            element={<CustomerLayout />}
+          >
+            <Route
+              index
+              element={
+                <Navigate
+                  to="dashboard"
+                  replace
+                />
+              }
+            />
+
+    <Route
+      path="dashboard"
+      element={<CustomerDashboardPage />}
+    />
+
+    <Route
+      path="tickets"
+      element={
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">
+            My Tickets
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Ticket tracking will be available in Phase 19.3.
+          </p>
+        </div>
+      }
+    />
+
+    <Route
+      path="tickets/create"
+      element={
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">
+            Create Support Ticket
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Ticket creation will be available in Phase 19.2.
+          </p>
+        </div>
+      }
+    />
+
+    <Route
+      path="tickets/:ticketId"
+      element={
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">
+            Ticket Details
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Ticket details will be available in Phase 19.3.
+          </p>
+        </div>
+      }
+    />
+
+    <Route
+      path="profile"
+      element={
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">
+            My Profile
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Profile management will be available in Phase 19.5.
+          </p>
+        </div>
+      }
+    />
+  </Route>
+</Route>
       <Route element={<ProtectedRoute />}>
         <Route
           path="/unauthorized"
@@ -228,25 +331,16 @@ const App = () => {
               element={<AdminTicketDetailPage />}
             />
 
-            <Route
-              path="analytics"
-              element={
-                <AdminPlaceholderPage
-                  title="AI Analytics"
-                  description="Monitor AI performance and support analytics."
-                />
-              }
-            />
+             <Route
+                path="analytics"
+                element={<AdminAIAnalyticsPage />}
+              />
 
-            <Route
-              path="automation"
-              element={
-                <AdminPlaceholderPage
-                  title="Automation"
-                  description="Monitor and manage automation jobs."
+              <Route
+                  path="automation"
+                  element={<AdminAutomationPage />}
                 />
-              }
-            />
+
           </Route>
         </Route>
        <Route element={<RoleRoute allowedRoles={["agent"]} />}>

@@ -3,8 +3,9 @@ import { createContext } from "react";
 import type {
   AuthenticatedAgent,
   LoginRequest,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
 } from "../types/auth.types";
-
 
 export interface AuthContextType {
   user: AuthenticatedAgent | null;
@@ -21,9 +22,16 @@ export interface AuthContextType {
     credentials: LoginRequest
   ) => Promise<AuthenticatedAgent>;
 
+  updateProfile: (
+    payload: UpdateProfileRequest
+  ) => Promise<AuthenticatedAgent>;
+
+  changePassword: (
+    payload: ChangePasswordRequest
+  ) => Promise<void>;
+
   logout: () => void;
 }
-
 
 export const AuthContext =
   createContext<AuthContextType | undefined>(

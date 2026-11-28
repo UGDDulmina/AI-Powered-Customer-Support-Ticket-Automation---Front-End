@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Ticket } from "lucide-react";
 
-import type { AgentTicket } from "../../types/agentTicket.types";
+import type { AgentTicket } from "../../../types/agentTicket.types";
 
 import type {
   TicketStatus,
   TicketPriority,
-} from "../../types/adminTicket.types";
+} from "../../../types/adminTicket.types";
 
 interface Props {
   tickets: AgentTicket[];

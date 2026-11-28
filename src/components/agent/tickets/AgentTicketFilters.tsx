@@ -4,7 +4,7 @@ import type {
   AgentTicketFilters as Filters,
   AgentTicketStatusFilter,
   AgentTicketPriorityFilter,
-} from "../../types/agentTicket.types";
+} from "../../../types/agentTicket.types";
 
 interface Props {
   filters: Filters;

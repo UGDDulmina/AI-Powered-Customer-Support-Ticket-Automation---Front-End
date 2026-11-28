@@ -9,7 +9,7 @@ import {
 
 import type {
   AgentDashboardStatistics,
-} from "../../types/agentDashboard.types";
+} from "../../../types/agentDashboard.types";
 
 interface AgentDashboardStatsProps {
   statistics: AgentDashboardStatistics;
