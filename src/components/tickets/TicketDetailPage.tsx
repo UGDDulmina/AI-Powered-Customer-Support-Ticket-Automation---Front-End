@@ -1,7 +1,20 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import axios from "axios";
+import { useParams } from "react-router-dom";
+
+import {
+  RefreshCw,
+  LoaderCircle,
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+} from "lucide-react";
 
 import {
   getTicketById,
@@ -19,40 +32,35 @@ import Conversation, {
   type ConversationMessage,
 } from "./Conversation";
 
-import AISuggestionCard from "../../components/ai/AISuggestionCard";
-
+import AISuggestionCard from "../ai/AISuggestionCard";
 import ReplyComposer from "./ReplyComposer";
-import { getCurrentAgent } from "../../api/auth.api";
 import AutomationJobsPanel from "../automation/AutomationJobsPanel";
+import { useAuth } from "../../hooks/useAuth";
+import { getApiErrorMessage } from "../../utils/apiError";
 
-function getErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const status = error.response?.status;
+const TICKET_STATUSES = [
+  "open",
+  "in_progress",
+  "resolved",
+  "closed",
+];
 
-    if (status === 401) {
-      return "Your session has expired. Please log in again.";
-    }
+function formatLabel(value?: string | null): string {
+  if (!value) return "Not set";
 
-    if (status === 403) {
-      return "You do not have permission to access this resource.";
-    }
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
-    if (status === 404) {
-      return "The requested resource was not found. Check the backend endpoint.";
-    }
+function formatDate(value?: string | null): string {
+  if (!value) return "Not available";
 
-    if (status === 422) {
-      return "The backend rejected the request format.";
-    }
+  const date = new Date(value);
 
-    return `Request failed${status ? ` (${status})` : ""}.`;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "An unexpected error occurred.";
+  return Number.isNaN(date.getTime())
+    ? "Not available"
+    : date.toLocaleString();
 }
 
 function mapMessage(
@@ -67,10 +75,20 @@ function mapMessage(
   let senderType: ConversationMessage["senderType"] =
     "system";
 
-  if (sender === "agent" || sender === "support_agent") {
-    senderType = "agent";
-  } else if (sender === "customer") {
+  let senderLabel = "System";
+
+  if (sender === "customer") {
     senderType = "customer";
+    senderLabel = "Customer";
+  } else if (
+    sender === "agent" ||
+    sender === "support_agent"
+  ) {
+    senderType = "agent";
+    senderLabel = "Support Agent";
+  } else if (sender === "ai") {
+    senderType = "agent";
+    senderLabel = "AI-Assisted Reply";
   }
 
   return {
@@ -81,432 +99,496 @@ function mapMessage(
       message.body ??
       "",
     senderType,
-    senderLabel:
-      senderType === "agent"
-        ? "Support Agent"
-        : senderType === "customer"
-          ? "Customer"
-          : "Unknown Sender",
+    senderLabel,
     createdAt: message.created_at,
   };
 }
 
-export default function TicketDetailPage() {
-  const { ticketId } = useParams<{ ticketId: string }>();
+interface ContentProps {
+  ticketId: number;
+  agentId: number;
+  isAdmin: boolean;
+}
 
-  const id = Number(ticketId);
+function TicketDetailContent({
+  ticketId,
+  agentId,
+  isAdmin,
+}: ContentProps) {
+  const [ticket, setTicket] = useState<Ticket | null>(null);
 
-  const validId =
-    Number.isInteger(id) && id > 0;
-
-  const [ticket, setTicket] = useState<Ticket | null>(
-    null
-  );
-
-  const [messages, setMessages] = useState<
-    SupportMessage[]
-  >([]);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
+
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [error, setError] = useState("");
   const [messageError, setMessageError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [selectedStatus, setSelectedStatus] =
-    useState("");
+  const statusBusyRef = useRef(false);
+  const replyBusyRef = useRef(false);
+  const requestVersion = useRef(0);
 
-  const [savingStatus, setSavingStatus] =
-    useState(false);
-
-  const [refreshing, setRefreshing] =
-    useState(false);
-
-    
- const [agentId, setAgentId] = useState<number | null>(null);
-
- useEffect(() => {
-    async function loadAgent() {
-        try {
-        const agent = await getCurrentAgent();
-        setAgentId(agent.id);
-        } catch (err) {
-        setError(getErrorMessage(err));
-        }
-    }
-
-    void loadAgent();
-    }, []);
-
-  const loadTicket = useCallback(async () => {
-    if (!validId) {
-      setError("Invalid ticket ID.");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setMessageError("");
-
+  const loadMessages = useCallback(async () => {
     try {
-      const ticketData = await getTicketById(id);
+      const data = await getTicketMessages(ticketId);
 
-      setTicket(ticketData);
-      setSelectedStatus(ticketData.status ?? "");
+      setMessages(data);
+      setMessageError("");
+    } catch (err: unknown) {
+      setMessageError(getApiErrorMessage(err));
+    }
+  }, [ticketId]);
+
+  const loadTicket = useCallback(
+    async (isRefresh = false) => {
+      const version = ++requestVersion.current;
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError("");
 
       try {
-        const messageData = await getTicketMessages(id);
-        setMessages(messageData);
-      } catch (messageErr) {
+        const data = await getTicketById(ticketId);
+
+        if (version !== requestVersion.current) return;
+
+        if (!isAdmin && data.assigned_agent_id !== agentId) {
+          setTicket(null);
+          setMessages([]);
+          setError("You do not have access to this ticket.");
+          return;
+        }
+
+        setTicket(data);
+        setSelectedStatus(data.status ?? "");
+
+        try {
+          const messageData = await getTicketMessages(ticketId);
+
+          if (version !== requestVersion.current) return;
+
+          setMessages(messageData);
+          setMessageError("");
+        } catch (err: unknown) {
+          if (version !== requestVersion.current) return;
+
+          setMessageError(getApiErrorMessage(err));
+        }
+      } catch (err: unknown) {
+        if (version !== requestVersion.current) return;
+
+        setTicket(null);
         setMessages([]);
-        setMessageError(
-          `Unable to load conversation: ${
-            getErrorMessage(messageErr)
-          }`
-        );
+        setError(getApiErrorMessage(err));
+      } finally {
+        if (version === requestVersion.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
-    } catch (err) {
-      setTicket(null);
-      setMessages([]);
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [id, validId]);
+    },
+    [ticketId, agentId, isAdmin]
+  );
 
   useEffect(() => {
     void loadTicket();
+
+    return () => {
+      requestVersion.current++;
+    };
   }, [loadTicket]);
+
+  useEffect(() => {
+    if (!success) return;
+
+    const timeout = window.setTimeout(() => {
+      setSuccess("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [success]);
 
   const conversationMessages = useMemo(
     () =>
       [...messages]
         .sort((a, b) => {
-          const first = a.created_at
-            ? Date.parse(a.created_at)
-            : 0;
+          const first = Date.parse(a.created_at ?? "") || 0;
+          const second = Date.parse(b.created_at ?? "") || 0;
 
-          const second = b.created_at
-            ? Date.parse(b.created_at)
-            : 0;
-
-          return first - second;
+          return first - second || a.id - b.id;
         })
         .map(mapMessage),
     [messages]
   );
 
-  async function handleManualReply(
-    content: string
-  ) {
-    if (!validId) {
-      throw new Error("Invalid ticket ID");
+  async function handleManualReply(content: string) {
+    const reply = content.trim();
+
+    if (!ticket || !reply || reply.length > 5000) {
+      throw new Error("Enter a valid reply.");
     }
 
+    if (replyBusyRef.current) {
+      throw new Error("A reply is already being submitted.");
+    }
+
+    replyBusyRef.current = true;
+    setSendingReply(true);
     setError("");
     setSuccess("");
 
     try {
-      await createManualReply(id, content);
+      const createdMessage = await createManualReply(
+        ticketId,
+        reply
+      );
 
-      const updatedMessages =
-        await getTicketMessages(id);
+      setMessages((previous) => [
+        ...previous.filter(
+          (message) => message.id !== createdMessage.id
+        ),
+        createdMessage,
+      ]);
 
-      setMessages(updatedMessages);
-      setMessageError("");
-      setSuccess("Reply saved successfully.");
-    } catch (err) {
-      setError(getErrorMessage(err));
-      throw err;
+      setSuccess("Reply sent successfully.");
+
+      await loadMessages();
+    } finally {
+      replyBusyRef.current = false;
+      setSendingReply(false);
     }
   }
 
   async function handleStatusUpdate() {
-    if (!ticket || !selectedStatus) {
+    if (
+      !ticket ||
+      !TICKET_STATUSES.includes(selectedStatus) ||
+      selectedStatus === ticket.status ||
+      statusBusyRef.current
+    ) {
       return;
     }
 
+    statusBusyRef.current = true;
     setSavingStatus(true);
     setError("");
     setSuccess("");
 
     try {
-      const updatedTicket =
-        await updateTicketStatus(
-          ticket.id,
-          selectedStatus
-        );
+      await updateTicketStatus(ticketId, selectedStatus);
 
-      setTicket(updatedTicket);
-      setSelectedStatus(
-        updatedTicket.status ?? selectedStatus
+      setTicket((previous) =>
+        previous
+          ? { ...previous, status: selectedStatus }
+          : previous
       );
 
-      setSuccess("Ticket status updated.");
-    } catch (err) {
-      setError(getErrorMessage(err));
+      setSuccess("Ticket status updated successfully.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err));
     } finally {
+      statusBusyRef.current = false;
       setSavingStatus(false);
     }
   }
 
-  async function handleRefresh() {
-    setRefreshing(true);
-    setSuccess("");
-
-    try {
-      await loadTicket();
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  if (!validId) {
-    return (
-      <div className="p-8 text-red-600">
-        Invalid ticket ID.
-      </div>
-    );
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 p-8">
-        Loading ticket details...
+      <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border bg-white">
+        <LoaderCircle className="h-8 w-8 animate-spin text-blue-600" />
+
+        <p className="mt-3 text-sm text-gray-500">
+          Loading ticket details...
+        </p>
       </div>
     );
   }
 
   if (!ticket) {
     return (
-      <div className="min-h-screen bg-slate-100 p-8">
-        <div className="mx-auto max-w-5xl">
-          <Link
-            to="/tickets"
-            className="text-blue-600"
-          >
-            Back to Ticket Inbox
-          </Link>
+      <div className="rounded-xl border border-red-200 bg-white p-8 text-center">
+        <AlertCircle className="mx-auto h-10 w-10 text-red-500" />
 
-          <p className="mt-6 text-red-600">
-            {error || "Ticket not found."}
-          </p>
+        <h2 className="mt-4 font-semibold text-gray-900">
+          Unable to load ticket
+        </h2>
 
-          <button
-            onClick={() => void loadTicket()}
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white"
-          >
-            Try Again
-          </button>
-        </div>
+        <p className="mt-2 text-sm text-red-600">
+          {error || "Ticket not found."}
+        </p>
+
+        <button
+          onClick={() => void loadTicket()}
+          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
 
-  const ticketTitle =
-    ticket.subject ??
-    ticket.title ??
-    "Untitled Ticket";
+  const busy =
+    refreshing || savingStatus || sendingReply;
 
+  const closed = ticket.status === "closed";
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Ticket Details
+          </h2>
 
-
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Link
-            to="/tickets"
-            className="font-medium text-blue-600 hover:underline"
-          >
-            Back to Ticket Inbox
-          </Link>
-
-          <button
-            onClick={() => void handleRefresh()}
-            disabled={refreshing}
-            className="rounded-lg border bg-white px-4 py-2 hover:bg-slate-50 disabled:opacity-50"
-          >
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage customer conversations and replies.
+          </p>
         </div>
 
-        
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-            {error}
-          </div>
-        )}
+        <button
+          onClick={() => void loadTicket(true)}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          <RefreshCw
+            size={16}
+            className={refreshing ? "animate-spin" : ""}
+          />
 
-        {success && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
-            {success}
-          </div>
-        )}
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-slate-500">
-                Ticket #{ticket.id}
-              </p>
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          <AlertCircle size={18} />
+          {error}
+        </div>
+      )}
 
-              <h1 className="mt-1 text-2xl font-bold text-slate-900">
-                {ticketTitle}
-              </h1>
-            </div>
+      {success && (
+        <div
+          role="status"
+          className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700"
+        >
+          <CheckCircle2 size={18} />
+          {success}
+        </div>
+      )}
 
-            <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-medium capitalize text-blue-700">
-              {ticket.status ?? "Unknown"}
-            </span>
-          </div>
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-gray-500">
+              Ticket #{ticket.id}
+            </p>
 
-          <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-slate-500">Customer ID</p>
-              <p className="font-medium">
-                {ticket.customer_id ?? "-"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-slate-500">Assigned Agent</p>
-              <p className="font-medium">
-                {ticket.assigned_agent_id ?? "Unassigned"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-slate-500">Priority</p>
-              <p className="font-medium capitalize">
-                {ticket.priority ?? "Not set"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-slate-500">Created</p>
-              <p className="font-medium">
-                {ticket.created_at
-                  ? new Date(
-                      ticket.created_at
-                    ).toLocaleString()
-                  : "-"}
-              </p>
-            </div>
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">
+              {ticket.subject ??
+                ticket.title ??
+                "Untitled Ticket"}
+            </h1>
           </div>
 
-          {ticket.description && (
-            <div className="mt-6 border-t pt-5">
-              <h2 className="mb-2 font-semibold">
-                Description
-              </h2>
-
-              <p className="whitespace-pre-wrap text-slate-700">
-                {ticket.description}
-              </p>
-            </div>
-          )}
+          <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700">
+            {formatLabel(ticket.status)}
+          </span>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ["Customer ID", ticket.customer_id ?? "Not set"],
+            [
+              "Assigned Agent",
+              ticket.assigned_agent_id ?? "Unassigned",
+            ],
+            ["Priority", formatLabel(ticket.priority)],
+            ["Category", formatLabel(ticket.category)],
+            ["Created", formatDate(ticket.created_at)],
+            ["Updated", formatDate(ticket.updated_at)],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-lg bg-gray-50 p-4"
+            >
+              <p className="text-xs font-medium text-gray-500">
+                {label}
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {ticket.description && (
+          <div className="mt-6 border-t border-gray-200 pt-5">
+            <h3 className="font-semibold text-gray-900">
+              Description
+            </h3>
+
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">
+              {ticket.description}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {!isAdmin && (
+        <section className="rounded-xl border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-900">
             Update Ticket Status
           </h2>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <select
+              aria-label="Ticket status"
               value={selectedStatus}
+              disabled={busy}
               onChange={(event) =>
                 setSelectedStatus(event.target.value)
               }
-              className="min-w-48 rounded-lg border border-slate-300 px-4 py-2"
+              className="min-w-48 rounded-lg border border-gray-300 px-4 py-2 text-sm"
             >
-              {Array.from(
-                new Set(
-                  [
-                    ticket.status,
-                    "open",
-                    "in_progress",
-                    "pending",
-                    "resolved",
-                    "closed",
-                  ].filter(
-                    (status): status is string =>
-                      Boolean(status)
-                  )
-                )
-              ).map((status) => (
+              {TICKET_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status.replaceAll("_", " ")}
+                  {formatLabel(status)}
                 </option>
               ))}
             </select>
 
             <button
-              onClick={() =>
-                void handleStatusUpdate()
-              }
+              onClick={() => void handleStatusUpdate()}
               disabled={
-                savingStatus ||
+                busy ||
                 !selectedStatus ||
                 selectedStatus === ticket.status
               }
-              className="rounded-lg bg-blue-600 px-5 py-2 text-white disabled:opacity-50"
+              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {savingStatus
-                ? "Updating..."
-                : "Update Status"}
+              {savingStatus ? "Updating..." : "Update Status"}
             </button>
           </div>
+        </section>
+      )}
 
-          <p className="mt-3 text-xs text-slate-500">
-            Available status values must match your backend's
-            accepted values.
-          </p>
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <MessageSquare size={20} className="text-blue-600" />
+
+            <h2 className="text-lg font-semibold text-gray-900">
+              Customer Conversation
+            </h2>
+          </div>
+
+          <span className="text-sm text-gray-500">
+            {messages.length} messages
+          </span>
         </div>
 
+        {messageError && (
+          <div className="mb-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+            <p>{messageError}</p>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-5 text-lg font-semibold">
-            Customer Conversation
-          </h2>
+            <button
+              onClick={() => void loadMessages()}
+              disabled={busy}
+              className="mt-2 font-medium underline"
+            >
+              Refresh Conversation
+            </button>
+          </div>
+        )}
 
-          {messageError && (
-            <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-              {messageError}
-            </div>
-          )}
+        <Conversation messages={conversationMessages} />
+      </section>
 
-          <Conversation
-            messages={conversationMessages}
-          />
+      {closed ? (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+          This ticket is closed. Reopen it before sending
+          additional replies.
         </div>
-
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <ReplyComposer
-            onSend={handleManualReply}
-            disabled={Boolean(messageError)}
-          />
-
-          <p className="mt-3 text-xs text-slate-500">
-            Saving a reply records it in the backend.
-            External message delivery is a separate
-            capability.
-          </p>
-        </div>
-            {agentId !== null && (
-            <AISuggestionCard
-                ticketId={id}
-                agentId={agentId}
-                onReplySent={async () => {
-                const updatedMessages = await getTicketMessages(id);
-                setMessages(updatedMessages);
-                setMessageError("");
-                }}
+      ) : (
+        <>
+          <section className="rounded-xl border border-gray-200 bg-white p-6">
+            <ReplyComposer
+              onSend={handleManualReply}
+              disabled={busy || Boolean(messageError)}
             />
-            )}
-             <AutomationJobsPanel ticketId={id} />
-      </div>
+
+            <p className="mt-3 text-xs text-gray-500">
+              Replies are saved to the ticket conversation.
+            </p>
+          </section>
+
+         <AISuggestionCard
+            key={`${ticketId}-${agentId}`}
+            ticketId={ticketId}
+            agentId={agentId}
+            onReplySent={loadMessages}
+            disabled={busy || Boolean(messageError)}
+          />
+        </>
+      )}
+
+      {isAdmin && (
+        <AutomationJobsPanel ticketId={ticketId} />
+      )}
     </div>
+  );
+}
+
+export default function TicketDetailPage() {
+  const { ticketId } = useParams<{ ticketId: string }>();
+
+  const { user, loading } = useAuth();
+
+  const id = Number(ticketId);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <LoaderCircle className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return (
+      <div className="rounded-lg bg-red-50 p-4 text-red-700">
+        Invalid ticket ID.
+      </div>
+    );
+  }
+
+  if (!user || !user.is_active) {
+    return (
+      <div className="rounded-lg bg-red-50 p-4 text-red-700">
+        You are not authorized to access this ticket.
+      </div>
+    );
+  }
+
+  return (
+    <TicketDetailContent
+      key={`${id}-${user.id}`}
+      ticketId={id}
+      agentId={user.id}
+      isAdmin={user.role === "admin"}
+    />
   );
 }

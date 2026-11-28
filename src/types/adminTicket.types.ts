@@ -44,6 +44,7 @@ export interface AdminTicketQuery {
   limit?: number;
   search?: string;
   status?: TicketStatus;
+  priority?: TicketPriority;
   customer_id?: number;
   assigned_agent_id?: number;
 }
@@ -116,4 +117,14 @@ export interface TicketPredictionResult {
   priority: TicketPriority;
   matchedKeywords: string[];
   reason: string;
+}
+
+export interface BackendTicketListResponse {
+  items: AdminTicket[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
 }

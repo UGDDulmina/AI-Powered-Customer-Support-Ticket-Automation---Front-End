@@ -1,10 +1,13 @@
-
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Send, LoaderCircle, AlertCircle } from "lucide-react";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 interface ReplyComposerProps {
   onSend: (message: string) => Promise<void>;
   disabled?: boolean;
 }
+
+const MAX_LENGTH = 5000;
 
 export default function ReplyComposer({
   onSend,
@@ -14,54 +17,109 @@ export default function ReplyComposer({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSend() {
-    const content = message.trim();
+  const submittingRef = useRef(false);
 
-    if (!content || sending || disabled) {
+  const canSend =
+    Boolean(message.trim()) &&
+    message.length <= MAX_LENGTH &&
+    !sending &&
+    !disabled;
+
+  async function handleSend() {
+    if (!canSend || submittingRef.current) {
       return;
     }
 
+    submittingRef.current = true;
     setSending(true);
     setError("");
 
     try {
-      await onSend(content);
+      await onSend(message.trim());
       setMessage("");
-    } catch {
-      setError("Unable to save the reply. Please try again.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err));
     } finally {
+      submittingRef.current = false;
       setSending(false);
     }
   }
 
   return (
-    <div className="space-y-3">
-      <label className="block font-semibold">
-        Manual Reply
-      </label>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">
+          Manual Reply
+        </h2>
 
-      <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        disabled={sending || disabled}
-        placeholder="Write your response..."
-        rows={4}
-        className="w-full rounded-lg border border-slate-300 p-3"
-      />
+        <p className="mt-1 text-sm text-gray-500">
+          Write a response to the customer.
+        </p>
+      </div>
 
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        >
+          <AlertCircle size={18} />
+          {error}
+        </div>
       )}
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleSend}
-          disabled={
-            !message.trim() || sending || disabled
+      <textarea
+        aria-label="Manual reply"
+        value={message}
+        maxLength={MAX_LENGTH}
+        rows={5}
+        disabled={sending || disabled}
+        placeholder="Write your response here..."
+        onChange={(event) => {
+          setMessage(event.target.value);
+          setError("");
+        }}
+        onKeyDown={(event) => {
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+            void handleSend();
           }
-          className="rounded-lg bg-blue-600 px-5 py-2 text-white disabled:opacity-50"
+        }}
+        className="w-full resize-y rounded-lg border border-gray-300 p-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p
+            className={`text-xs ${
+              message.length >= MAX_LENGTH
+                ? "text-red-600"
+                : "text-gray-500"
+            }`}
+          >
+            {message.length} / {MAX_LENGTH} characters
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            Press Ctrl + Enter to send
+          </p>
+        </div>
+
+        <button
+          type="button"
+          disabled={!canSend}
+          onClick={() => void handleSend()}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {sending ? "Saving..." : "Save Reply"}
+          {sending ? (
+            <LoaderCircle size={17} className="animate-spin" />
+          ) : (
+            <Send size={17} />
+          )}
+
+          {sending ? "Sending..." : "Send Reply"}
         </button>
       </div>
     </div>

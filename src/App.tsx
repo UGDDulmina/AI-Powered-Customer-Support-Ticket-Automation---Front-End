@@ -5,54 +5,80 @@ import {
   useParams,
 } from "react-router-dom";
 
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import TicketsPage from "./pages/TicketsPage";
-import AdminAgentsPage from "./pages/AdminAgentPage";
-import TicketDetailPage from "./components/tickets/TicketDetailPage";
-import UnauthorizedPage from "./pages/UnauthorizedPage";
+import { LoaderCircle } from "lucide-react";
+
+import { useAuth } from "./hooks/useAuth";
+
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RoleRoute from "./components/auth/RoleRoute";
-import LoadingSpinner from "./components/common/LoadingSpinner";
+
 import AdminLayout from "./components/layout/AdminLayout";
+import AgentLayout from "./components/layout/AgentLayout";
+
+import LoginPage from "./pages/LoginPage";
+import AgentDashboardPage from "./pages/AgentDashboardPage";
+
 import AdminDashboardPage from "./pages/AdminDashboardPage";
-import AdminPlaceholderPage from "./pages/AdminPlaceholderPage";
+import AdminAgentsPage from "./pages/AdminAgentPage";
 import AdminCustomersPage from "./pages/AdminCustomersPage";
 import AdminCustomerDetailsPage from "./pages/AdminCustomerDetailsPage";
 import AdminTicketsPage from "./pages/AdminTicketsPage";
 import AdminCreateTicketPage from "./pages/AdminCreateTicketPage";
 import AdminTicketDetailPage from "./pages/AdminTicketDetailPage";
+import AdminPlaceholderPage from "./pages/AdminPlaceholderPage";
 
-import { useAuth } from "./hooks/useAuth";
+import AgentProfilePage from "./pages/AgentProfilePage";
+
+import AgentTicketsPage from "./pages/AgentTicketsPage";
+import AgentTicketDetailPage from "./pages/AgentTicketDetailPage";
+
+const RouteLoading = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <LoaderCircle
+      size={32}
+      className="animate-spin text-blue-600"
+    />
+  </div>
+);
 
 const DashboardRedirect = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <LoadingSpinner message="Loading dashboard..." />
-    );
+    return <RouteLoading />;
   }
 
-  if (user?.role === "admin") {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === "admin") {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  if (user?.role === "agent") {
+  if (user.role === "agent") {
     return <Navigate to="/agent/dashboard" replace />;
   }
 
-  return <Navigate to="/login" replace />;
+  return <Navigate to="/unauthorized" replace />;
 };
 
 const TicketRedirect = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (user?.role === "admin") {
+  if (loading) {
+    return <RouteLoading />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === "admin") {
     return <Navigate to="/admin/tickets" replace />;
   }
 
-  if (user?.role === "agent") {
+  if (user.role === "agent") {
     return <Navigate to="/agent/tickets" replace />;
   }
 
@@ -60,28 +86,39 @@ const TicketRedirect = () => {
 };
 
 const TicketDetailRedirect = () => {
-  const { user } = useAuth();
   const { ticketId } = useParams();
+  const { user, loading } = useAuth();
 
-  const id = Number(ticketId);
+  if (loading) {
+    return <RouteLoading />;
+  }
 
-  if (!Number.isSafeInteger(id) || id <= 0) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const numericTicketId = Number(ticketId);
+
+  if (
+    !Number.isSafeInteger(numericTicketId) ||
+    numericTicketId <= 0
+  ) {
     return <TicketRedirect />;
   }
 
-  if (user?.role === "admin") {
+  if (user.role === "admin") {
     return (
       <Navigate
-        to={`/admin/tickets/${id}`}
+        to={`/admin/tickets/${numericTicketId}`}
         replace
       />
     );
   }
 
-  if (user?.role === "agent") {
+  if (user.role === "agent") {
     return (
       <Navigate
-        to={`/agent/tickets/${id}`}
+        to={`/agent/tickets/${numericTicketId}`}
         replace
       />
     );
@@ -89,6 +126,31 @@ const TicketDetailRedirect = () => {
 
   return <Navigate to="/unauthorized" replace />;
 };
+
+const UnauthorizedPage = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <h1 className="text-3xl font-bold text-red-600">
+        403
+      </h1>
+
+      <h2 className="mt-4 text-xl font-semibold text-slate-900">
+        Access Denied
+      </h2>
+
+      <p className="mt-3 text-sm text-slate-500">
+        You do not have permission to access this page.
+      </p>
+
+      <a
+        href="/dashboard"
+        className="mt-6 inline-flex rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
+      >
+        Return to Dashboard
+      </a>
+    </div>
+  </div>
+);
 
 const App = () => {
   return (
@@ -171,7 +233,7 @@ const App = () => {
               element={
                 <AdminPlaceholderPage
                   title="AI Analytics"
-                  description="Monitor AI performance and insights."
+                  description="Monitor AI performance and support analytics."
                 />
               }
             />
@@ -180,32 +242,42 @@ const App = () => {
               path="automation"
               element={
                 <AdminPlaceholderPage
-                  title="AI Automation"
-                  description="Monitor automated ticket processing."
+                  title="Automation"
+                  description="Monitor and manage automation jobs."
                 />
               }
             />
           </Route>
         </Route>
+       <Route element={<RoleRoute allowedRoles={["agent"]} />}>
+          <Route path="/agent" element={<AgentLayout />}>
+            <Route
+              index
+              element={<Navigate to="dashboard" replace />}
+            />
 
-        <Route
-          element={<RoleRoute allowedRoles={["agent"]} />}
-        >
-          <Route
-            path="/agent/dashboard"
-            element={<DashboardPage />}
-          />
+            <Route
+              path="dashboard"
+              element={<AgentDashboardPage />}
+            />
 
-          <Route
-            path="/agent/tickets"
-            element={<TicketsPage />}
-          />
+            <Route
+              path="tickets"
+              element={<AgentTicketsPage />}
+            />
 
-          <Route
-            path="/agent/tickets/:ticketId"
-            element={<TicketDetailPage />}
-          />
-        </Route>
+            <Route
+              path="tickets/:ticketId"
+              element={<AgentTicketDetailPage />}
+            />
+
+            <Route
+              path="profile"
+              element={<AgentProfilePage />}
+            />
+          </Route>
+        </Route> 
+         
       </Route>
 
       <Route

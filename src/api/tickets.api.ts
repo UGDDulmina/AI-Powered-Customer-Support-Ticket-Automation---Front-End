@@ -1,4 +1,3 @@
-
 import { apiClient } from "./client";
 
 export interface Ticket {
@@ -8,6 +7,7 @@ export interface Ticket {
   description?: string | null;
   status?: string;
   priority?: string;
+  category?: string | null;
   customer_id?: number;
   assigned_agent_id?: number | null;
   created_at?: string;
@@ -17,7 +17,8 @@ export interface Ticket {
 type TicketListResponse =
   | Ticket[]
   | {
-      items: Ticket[];
+      item?: Ticket[];
+      items?: Ticket[];
     };
 
 export async function getTickets(): Promise<Ticket[]> {
@@ -27,6 +28,10 @@ export async function getTickets(): Promise<Ticket[]> {
 
   if (Array.isArray(response.data)) {
     return response.data;
+  }
+
+  if (Array.isArray(response.data.item)) {
+    return response.data.item;
   }
 
   if (Array.isArray(response.data.items)) {
@@ -51,7 +56,7 @@ export async function updateTicketStatus(
   status: string
 ): Promise<Ticket> {
   const response = await apiClient.patch<Ticket>(
-    `/tickets/${ticketId}`,
+    `/tickets/${ticketId}/status`,
     { status }
   );
 

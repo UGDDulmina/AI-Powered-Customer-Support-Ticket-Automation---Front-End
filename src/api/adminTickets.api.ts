@@ -14,37 +14,48 @@ import type {
   TicketCategoryPrediction,
   TicketPriorityPrediction,
   TicketPredictionResult,
+  BackendTicketListResponse,
 } from "../types/adminTicket.types";
 
 export const getAdminTickets = async (
   filters: AdminTicketQuery = {},
   signal?: AbortSignal
 ): Promise<AdminTicketListResponse> => {
-  const response =
-    await apiClient.get<AdminTicketListResponse>(
-      "/tickets",
-      {
-        params: {
-          page: filters.page ?? 1,
-          limit: filters.limit ?? 10,
-          search: filters.search?.trim() || undefined,
-          status: filters.status,
-          customer_id: filters.customer_id,
-          assigned_agent_id: filters.assigned_agent_id,
-        },
-        signal,
-      }
-    );
+  const response = await apiClient.get<BackendTicketListResponse>(
+    "/tickets",
+    {
+      params: {
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 10,
+        search: filters.search?.trim() || undefined,
+        status: filters.status,
+        priority: filters.priority,
+        customer_id: filters.customer_id,
+        assigned_agent_id: filters.assigned_agent_id,
+      },
+      signal,
+    }
+  );
+
+  const data = response.data;
 
   if (
-    !Array.isArray(response.data.item) ||
-    !Number.isInteger(response.data.total) ||
-    response.data.total < response.data.item.length
+    !Array.isArray(data.items) ||
+    !Number.isInteger(data.total) ||
+    data.total < data.items.length
   ) {
     throw new Error("Invalid ticket list response.");
   }
 
-  return response.data;
+  return {
+    item: data.items,
+    total: data.total,
+    page: data.page,
+    limit: data.limit,
+    total_pages: data.total_pages,
+    has_next: data.has_next,
+    has_previous: data.has_previous,
+  };
 };
 
 export const getAdminTicketById = async (

@@ -1,4 +1,3 @@
-
 import { apiClient } from "./client";
 
 export interface AISuggestion {
@@ -8,6 +7,8 @@ export interface AISuggestion {
   edited_reply: string | null;
   status: string;
   created_at: string;
+  reviewed_by_agent_id?: number | null;
+  reviewed_at?: string | null;
 }
 
 export interface GenerateSuggestionResponse {
@@ -36,15 +37,25 @@ export interface SendSuggestionResponse {
   sender_type: string;
 }
 
-export async function getAISuggestions(ticketId: number) {
+export async function getAISuggestions(
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<AISuggestion[]> {
   const response = await apiClient.get<AISuggestion[]>(
-    `/tickets/${ticketId}/ai-suggestions`
+    `/tickets/${ticketId}/ai-suggestions`,
+    { signal }
   );
+
+  if (!Array.isArray(response.data)) {
+    throw new Error("Invalid AI suggestion response.");
+  }
 
   return response.data;
 }
 
-export async function generateAISuggestion(ticketId: number) {
+export async function generateAISuggestion(
+  ticketId: number
+): Promise<GenerateSuggestionResponse> {
   const response =
     await apiClient.post<GenerateSuggestionResponse>(
       `/tickets/${ticketId}/suggest-reply`
@@ -58,7 +69,7 @@ export async function reviewAISuggestion(
   agentId: number,
   action: "approve" | "reject",
   editedReply?: string
-) {
+): Promise<ReviewSuggestionResponse> {
   const response =
     await apiClient.patch<ReviewSuggestionResponse>(
       `/tickets/${suggestionId}/review`,
@@ -66,7 +77,7 @@ export async function reviewAISuggestion(
         agent_id: agentId,
         action,
         ...(editedReply !== undefined
-          ? { edited_reply: editedReply }
+          ? { edited_reply: editedReply.trim() }
           : {}),
       }
     );
@@ -77,7 +88,7 @@ export async function reviewAISuggestion(
 export async function sendAISuggestion(
   suggestionId: number,
   agentId: number
-) {
+): Promise<SendSuggestionResponse> {
   const response =
     await apiClient.post<SendSuggestionResponse>(
       `/ai-suggestions/${suggestionId}/send`,
